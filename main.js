@@ -1,6 +1,8 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, Routes } = require('discord.js');
+const { Client, GatewayIntentBits, Routes, Collection } = require('discord.js');
 const { REST } = require('@discordjs/rest');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const client = new Client({
     intents: [
@@ -11,10 +13,19 @@ const client = new Client({
     ]
 });
 
-const commands = [
-	{ name: 'labas', type: 2 }
-];
+// Load commands
+client.commands = new Collection();
+const commands = [];
+const commandFiles = fs.readdirSync(path.join(__dirname, 'commands')).filter((file) => file.endsWith('.js'));
 
+for(const file of commandFiles) {
+    const cmd = require(path.join(__dirname, 'commands', file));
+
+    client.commands.set(cmd.data.name, cmd)
+    commands.push(cmd.data.toJSON());
+}
+
+// Register commands
 const rest = new REST({ version: '10' }).setToken(process.env.BOT_TOKEN);
 
 rest.put(Routes.applicationGuildCommands(process.env.BOT_ID, process.env.DEV_SRV_ID), { body: commands })
@@ -28,9 +39,13 @@ client.on('ready', () => {
 });
 
 client.on('interactionCreate', async (interaction) => {
-    if(interaction.isUserContextMenuCommand) {
-        if(interaction.commandName === 'labas') {
-            interaction.reply(`Labas, ${interaction.targetMember}`)         
-        }
+    const command = interaction.client.commands.get(interaction.commandName);
+
+    if(!command) return;
+
+    try {
+        await command.exec(interaction);
+    } catch(err) {
+        console.error(err);
     }
 });
