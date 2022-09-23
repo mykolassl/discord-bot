@@ -39,6 +39,7 @@ client.on('ready', () => {
 });
 
 client.on('interactionCreate', async (interaction) => {
+    // Retrieves bot commands from a set
     const command = interaction.client.commands.get(interaction.commandName);
 
     if(!command) return;
